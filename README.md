@@ -153,8 +153,8 @@ http://localhost:3000
 - [x] Renderização visual da fase de grupos integrada com API de bandeiras
 - [x] Motor de estado derivado em React para cálculo automático da classificação
 - [x] Persistência de placares via API REST (POST/PUT)
-- [ ] Implementação do chaveamento automático do mata-mata
-- [ ] Árvore visual do mata-mata (*Knockout Tree*)
+- [x] Implementação do chaveamento automático do mata-mata
+- [x] Árvore visual do mata-mata (*Knockout Tree*)
 - [ ] Sistema de simulação automática da Copa baseado em estatísticas e fator sorte
 
 ---

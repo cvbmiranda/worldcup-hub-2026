@@ -102,67 +102,68 @@ def update_group_standings(group_id):
 
 def generate_knockout_stage():
     """
-    Gera as 16 partidas dos 16-avos de final (ROUND_32)
-    com base nas classificações dos grupos.
-    Usa um modelo simplificado matemático de cruzamento.
+    Gera a árvore completa do mata-mata (31 partidas desde 16-avos até a Final).
     """
-    # 1. Checar se a fase de grupos já tem os jogos jogados (72 no total)
-    # Aqui, para ser permissivo no teste, vamos só garantir que as tabelas estejam atualizadas
     calculate_group_positions()
 
-    # 2. Obter os 1ºs e 2ºs de cada grupo
     winners = list(Standing.objects.filter(position=1).order_by('-points', '-goal_diff', '-goals_for'))
     runners_up = list(Standing.objects.filter(position=2).order_by('-points', '-goal_diff', '-goals_for'))
-    
-    # 3. Obter os 8 melhores terceiros colocados
     top_8_thirds, _ = get_best_third_placed_teams()
 
-    # Temos 12 Winners, 12 Runners-up, e 8 Thirds = 32 times.
     if len(winners) != 12 or len(runners_up) != 12 or len(top_8_thirds) != 8:
         raise ValueError("Dados insuficientes para gerar a fase de mata-mata. Faltam times nas classificações.")
 
-    # 4. Limpar qualquer jogo pré-existente do ROUND_32 para evitar duplicatas
-    Match.objects.filter(stage=Match.Stage.ROUND_32).delete()
+    # Limpar qualquer jogo de mata-mata e paths anteriores
+    from .models import KnockoutPath
+    Match.objects.filter(stage__in=[
+        Match.Stage.ROUND_32, Match.Stage.ROUND_16, Match.Stage.QUARTER,
+        Match.Stage.SEMI, Match.Stage.FINAL
+    ]).delete()
+    KnockoutPath.objects.all().delete()
 
-    matches_to_create = []
-    
     from django.utils import timezone
     now = timezone.now()
 
-    # 8 Winners jogam contra 8 Terceiros colocados (cruzamento invertido)
+    # --- 1. Criar os 16 jogos do ROUND_32 ---
+    r32_matches = []
+    
+    # 8 Winners vs 8 Thirds
     for i in range(8):
-        matches_to_create.append(
-            Match(
-                team1=winners[i].team,
-                team2=top_8_thirds[7 - i].team,  # Melhor vencedor contra o "pior" terceiro
-                stage=Match.Stage.ROUND_32,
-                date=now
-            )
-        )
-    
-    # Restaram 4 Winners. Eles jogam contra os 4 piores Runners-up
+        m = Match(team1=winners[i].team, team2=top_8_thirds[7 - i].team, stage=Match.Stage.ROUND_32, date=now)
+        m.save()
+        r32_matches.append(m)
+        
+    # 4 Winners vs 4 Piores Runners-up
     for i in range(4):
-        matches_to_create.append(
-            Match(
-                team1=winners[8 + i].team,
-                team2=runners_up[11 - i].team, # Piores runners-up (índices 11, 10, 9, 8)
-                stage=Match.Stage.ROUND_32,
-                date=now
-            )
-        )
-    
-    # Restaram 8 Runners-up (índices 0 a 7). Eles jogam entre si
+        m = Match(team1=winners[8 + i].team, team2=runners_up[11 - i].team, stage=Match.Stage.ROUND_32, date=now)
+        m.save()
+        r32_matches.append(m)
+        
+    # 8 Runners-up vs 8 Runners-up
     for i in range(4):
-        matches_to_create.append(
-            Match(
-                team1=runners_up[i].team,
-                team2=runners_up[7 - i].team,
-                stage=Match.Stage.ROUND_32,
-                date=now
-            )
-        )
+        m = Match(team1=runners_up[i].team, team2=runners_up[7 - i].team, stage=Match.Stage.ROUND_32, date=now)
+        m.save()
+        r32_matches.append(m)
 
-    # 5. Salvar as 16 partidas no banco em lote
-    Match.objects.bulk_create(matches_to_create)
+    # Função auxiliar para gerar a próxima fase
+    def create_next_round(prev_matches, stage):
+        next_matches = []
+        # Agrupa os jogos anteriores de 2 em 2 para formar 1 novo jogo
+        for i in range(0, len(prev_matches), 2):
+            m = Match(stage=stage, date=now)
+            m.save()
+            next_matches.append(m)
+            
+            # Criar os KnockoutPaths ligando as duas partidas prévias a esta
+            KnockoutPath.objects.create(match=prev_matches[i], next_match=m)
+            if i + 1 < len(prev_matches):
+                KnockoutPath.objects.create(match=prev_matches[i+1], next_match=m)
+        return next_matches
+
+    # --- 2. Construir a árvore ROUND_16 -> QUARTER -> SEMI -> FINAL ---
+    r16_matches = create_next_round(r32_matches, Match.Stage.ROUND_16)
+    qf_matches = create_next_round(r16_matches, Match.Stage.QUARTER)
+    sf_matches = create_next_round(qf_matches, Match.Stage.SEMI)
+    final_match = create_next_round(sf_matches, Match.Stage.FINAL)
 
     return Match.objects.filter(stage=Match.Stage.ROUND_32)

@@ -25,10 +25,38 @@ class MatchUpdateView(generics.UpdateAPIView):
         
         # 2. Se a partida pertence à fase de grupos e foi concluída, roda o recálculo
         if match.group and match.played:
-            # Atualiza os pontos e gols
             update_group_standings(match.group.id)
-            # Reordena as posições (sua função já existente!)
             calculate_group_positions()
+            
+        # 3. Se a partida pertence ao mata-mata e foi concluída, avança o vencedor
+        if match.played and match.stage != Match.Stage.GROUP:
+            winner = match.get_winner()
+            if winner:
+                # Checa se esta partida tem um caminho para a próxima fase
+                if hasattr(match, 'knockout') and match.knockout.next_match:
+                    next_match = match.knockout.next_match
+                    
+                    # Para ser determinístico, verificamos se o time1 está vazio.
+                    # Se estiver, o vencedor entra como mandante. Se não, como visitante.
+                    # Mas se o vencedor JÁ estiver num dos slots, ignoramos para não duplicar.
+                    if next_match.team1 != winner and next_match.team2 != winner:
+                        if next_match.team1 is None:
+                            next_match.team1 = winner
+                        elif next_match.team2 is None:
+                            next_match.team2 = winner
+                        else:
+                            # Se ambos os slots estiverem preenchidos (re-simulação),
+                            # temos que descobrir qual slot essa partida de origem alimenta.
+                            # Para simplificar, se já estiver cheio, apenas assumimos que 
+                            # a chave mudou e forçamos a atualização do slot correto.
+                            # Como temos 2 previous_matches apontando para o next_match:
+                            prev_matches = list(next_match.previous_matches.all().order_by('id'))
+                            if len(prev_matches) > 0 and prev_matches[0].match.id == match.id:
+                                next_match.team1 = winner
+                            elif len(prev_matches) > 1 and prev_matches[1].match.id == match.id:
+                                next_match.team2 = winner
+                                
+                        next_match.save()
 
 from rest_framework.views import APIView
 from rest_framework.response import Response

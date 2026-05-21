@@ -22,4 +22,4 @@ class MatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = Match
         # Escolhemos exatamente os campos que o Lance! usa na interface deles
-        fields = ['id', 'team1', 'team2', 'score1', 'score2', 'date', 'stage', 'group', 'played']
+        fields = ['id', 'team1', 'team2', 'score1', 'score2', 'penalties_score1', 'penalties_score2', 'date', 'stage', 'group', 'played']

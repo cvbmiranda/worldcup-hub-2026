@@ -61,6 +61,9 @@ class Match(models.Model):
     score1 = models.IntegerField(null=True, blank=True)
     score2 = models.IntegerField(null=True, blank=True)
 
+    penalties_score1 = models.IntegerField(null=True, blank=True)
+    penalties_score2 = models.IntegerField(null=True, blank=True)
+
     date = models.DateTimeField()
     stage = models.CharField(max_length=20, choices=Stage.choices)
 
@@ -71,6 +74,25 @@ class Match(models.Model):
     def clean(self):
         if self.team1 and self.team2 and self.team1 == self.team2:
             raise ValidationError("Um time não pode jogar contra ele mesmo.")
+
+    def get_winner(self):
+        if not self.played or self.team1 is None or self.team2 is None:
+            return None
+        if self.score1 is None or self.score2 is None:
+            return None
+
+        if self.score1 > self.score2:
+            return self.team1
+        elif self.score2 > self.score1:
+            return self.team2
+        else:
+            # Empate, resolve nos pênaltis se estiverem definidos
+            if self.penalties_score1 is not None and self.penalties_score2 is not None:
+                if self.penalties_score1 > self.penalties_score2:
+                    return self.team1
+                elif self.penalties_score2 > self.penalties_score1:
+                    return self.team2
+            return None
 
     def __str__(self):
         t1 = self.team1.name if self.team1 else "TBD"
