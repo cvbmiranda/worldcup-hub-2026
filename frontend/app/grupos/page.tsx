@@ -223,16 +223,11 @@ export default function GruposPage() {
                         {round.name}
                       </h4>
                       {round.games.map(match => {
-                        const stadium = match.stadium_name || "Estádio a definir";
-                        const dateStr = match.match_date_utc ? new Date(match.match_date_utc).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
-                        const officialTag = match.official_id ? `Jogo ${match.official_id} • ` : '';
-                        
                         return (
                           <MatchCard 
                             key={match.id} 
                             match={match} 
                             onScoreChange={handleScoreChange} 
-                            subtitle={`${officialTag}${dateStr} • ${stadium}`}
                           />
                         );
                       })}

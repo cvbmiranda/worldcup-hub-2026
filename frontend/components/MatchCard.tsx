@@ -24,20 +24,35 @@ export interface Match {
 interface MatchCardProps {
   match: Match;
   onScoreChange: (matchId: number, team: 'team1' | 'team2', score: number | null, isPenalty?: boolean) => void;
-  subtitle?: string;
 }
 
-export default function MatchCard({ match, onScoreChange, subtitle }: MatchCardProps) {
+export default function MatchCard({ match, onScoreChange }: MatchCardProps) {
   const isKnockout = match.stage && match.stage !== 'GROUP';
   const isTied = match.score1 !== null && match.score2 !== null && match.score1 === match.score2;
   const showPenalties = isKnockout && isTied;
 
+  let matchInfo = '';
+  if (match.official_id || match.match_date_utc || match.stadium_name) {
+    const parts = [];
+    if (match.official_id) parts.push(`Partida nº ${match.official_id}`);
+    if (match.match_date_utc) {
+      const d = new Date(match.match_date_utc);
+      const day = d.getDate().toString().padStart(2, '0');
+      const month = (d.getMonth() + 1).toString().padStart(2, '0');
+      const hours = d.getHours().toString().padStart(2, '0');
+      const minutes = d.getMinutes().toString().padStart(2, '0');
+      parts.push(`${day}/${month} às ${hours}:${minutes}`);
+    }
+    if (match.stadium_name) parts.push(match.stadium_name);
+    matchInfo = parts.join(' | ');
+  }
+
   return (
     <div className="flex flex-col bg-slate-900/80 backdrop-blur-md p-3 rounded-xl border border-slate-700/50 mb-2 shadow-lg hover:bg-slate-900 hover:border-fifa-purple/50 hover:shadow-[0_0_15px_rgba(122,0,255,0.2)] hover:-translate-y-0.5 transition-all duration-300 group">
       
-      {subtitle && (
-        <div className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest text-center mb-2 pb-2 border-b border-slate-800/50">
-          {subtitle}
+      {matchInfo && (
+        <div className="text-[10px] sm:text-xs text-slate-500 font-bold uppercase tracking-widest text-center mb-2 pb-2 border-b border-slate-800/50 truncate">
+          {matchInfo}
         </div>
       )}
 
