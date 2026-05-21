@@ -55,7 +55,7 @@ export default function KnockoutTree({ matches, onScoreChange, onSimulateAll, on
   const rightSF = sf.slice(1, 2);
 
   const renderConnectorsLeft = (count: number) => (
-    <div className="flex flex-col justify-around w-[8px] py-2">
+    <div className="flex flex-col justify-around w-[4px] py-2">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="flex-1 flex items-center w-full">
           <svg className="w-full h-1/2 text-slate-600/50 overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
@@ -67,7 +67,7 @@ export default function KnockoutTree({ matches, onScoreChange, onSimulateAll, on
   );
 
   const renderConnectorsRight = (count: number) => (
-    <div className="flex flex-col justify-around w-[8px] py-2">
+    <div className="flex flex-col justify-around w-[4px] py-2">
       {Array.from({ length: count }).map((_, i) => (
         <div key={i} className="flex-1 flex items-center w-full">
           <svg className="w-full h-1/2 text-slate-600/50 overflow-visible" preserveAspectRatio="none" viewBox="0 0 100 100">
@@ -90,21 +90,21 @@ export default function KnockoutTree({ matches, onScoreChange, onSimulateAll, on
   );
 
   return (
-    <div className="w-full mt-8 overflow-hidden flex flex-col items-center pb-8">
-      <div className="transform scale-95 origin-top flex flex-row w-max justify-center items-stretch gap-0.5 px-1 bg-slate-900/40 p-1.5 rounded-3xl border border-slate-700/30">
+    <div className="w-full mt-8 flex flex-col items-center pb-8">
+      <div className="transform scale-95 origin-top flex flex-row w-max justify-center items-stretch gap-0 px-1 bg-slate-900/40 p-1.5 rounded-3xl border border-slate-700/30">
         
         {/* Esquerda */}
-        {renderColumn(leftR32, 'w-[120px]', 'gap-0', '16-AVOS')}
+        {renderColumn(leftR32, 'w-32', 'gap-0', '16-AVOS')}
         {renderConnectorsLeft(4)}
-        {renderColumn(leftR16, 'w-[120px]', 'gap-2', 'OITAVAS')}
+        {renderColumn(leftR16, 'w-32', 'gap-2', 'OITAVAS')}
         {renderConnectorsLeft(2)}
-        {renderColumn(leftQF, 'w-[120px]', 'gap-6', 'QUARTAS')}
+        {renderColumn(leftQF, 'w-32', 'gap-6', 'QUARTAS')}
         {renderConnectorsLeft(1)}
-        {renderColumn(leftSF, 'w-[120px]', 'gap-0', 'SEMIFINAL')}
+        {renderColumn(leftSF, 'w-32', 'gap-0', 'SEMIFINAL')}
         {renderConnectorsLeft(0.5)}
 
         {/* FINAL CENTRAL */}
-        <div className="flex flex-col justify-center items-center w-[140px] relative px-1 shrink-0">
+        <div className="flex flex-col justify-center items-center w-36 relative px-1 shrink-0">
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-fifa-purple/10 to-transparent pointer-events-none rounded-full blur-3xl"></div>
           
           {finalWinner ? (
@@ -145,13 +145,13 @@ export default function KnockoutTree({ matches, onScoreChange, onSimulateAll, on
 
         {/* Direita */}
         {renderConnectorsRight(0.5)}
-        {renderColumn(rightSF, 'w-[120px]', 'gap-0', 'SEMIFINAL')}
+        {renderColumn(rightSF, 'w-32', 'gap-0', 'SEMIFINAL')}
         {renderConnectorsRight(1)}
-        {renderColumn(rightQF, 'w-[120px]', 'gap-6', 'QUARTAS')}
+        {renderColumn(rightQF, 'w-32', 'gap-6', 'QUARTAS')}
         {renderConnectorsRight(2)}
-        {renderColumn(rightR16, 'w-[120px]', 'gap-2', 'OITAVAS')}
+        {renderColumn(rightR16, 'w-32', 'gap-2', 'OITAVAS')}
         {renderConnectorsRight(4)}
-        {renderColumn(rightR32, 'w-[120px]', 'gap-0', '16-AVOS')}
+        {renderColumn(rightR32, 'w-32', 'gap-0', '16-AVOS')}
 
       </div>
 
