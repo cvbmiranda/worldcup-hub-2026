@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { api, generateKnockout, updateMatchResult } from "../../services/api";
+import { api, generateKnockout, updateMatchResult, simulateKnockout } from "../../services/api";
 import KnockoutTree from "../../components/KnockoutTree";
 import { Match } from "../../components/MatchCard";
 
@@ -29,11 +29,18 @@ export default function SimuladorPage() {
     loadMatches();
   }, []);
 
+  const [missingGames, setMissingGames] = useState<number | null>(null);
+
   const handleGenerate = async () => {
+    const unplayedCount = groupMatches.filter(m => m.score1 === null || m.score2 === null).length;
+    if (unplayedCount > 0) {
+      setMissingGames(unplayedCount);
+      return;
+    }
+
     setGenerating(true);
     try {
       await generateKnockout();
-      // Recarrega as partidas para exibir a chave atualizada
       loadMatches();
     } catch (error) {
       alert("Erro ao gerar o chaveamento. Verifique se os dados estão completos.");
@@ -68,7 +75,6 @@ export default function SimuladorPage() {
             updatedMatch.penalties_score1,
             updatedMatch.penalties_score2
           ).then(() => {
-            // Se foi uma alteração no mata-mata, recarregar a árvore para ver quem avançou
             if (updatedMatch.stage !== 'GROUP' && updatedMatch.score1 !== null && updatedMatch.score2 !== null) {
               loadMatches();
             }
@@ -78,6 +84,59 @@ export default function SimuladorPage() {
       
       return updatedMatches;
     });
+  };
+
+  const handleAutoComplete = () => {
+    const unplayed = groupMatches.filter(m => m.score1 === null || m.score2 === null);
+    if (unplayed.length === 0) return;
+
+    const updatedMatches = matches.map(m => {
+      if (m.stage === 'GROUP' && (m.score1 === null || m.score2 === null)) {
+        return { 
+          ...m, 
+          score1: Math.floor(Math.random() * 4), 
+          score2: Math.floor(Math.random() * 4) 
+        };
+      }
+      return m;
+    });
+
+    setMatches(updatedMatches);
+    
+    // Save to backend
+    unplayed.forEach(m => {
+      const s1 = Math.floor(Math.random() * 4);
+      const s2 = Math.floor(Math.random() * 4);
+      updateMatchResult(m.id, s1, s2).catch(console.error);
+    });
+  };
+
+  const handleSimulateKnockout = async () => {
+    setGenerating(true);
+    try {
+      await simulateKnockout();
+      loadMatches();
+    } catch (error) {
+      alert("Erro ao simular chaveamento.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleClearKnockout = async () => {
+    setGenerating(true);
+    try {
+      await generateKnockout(); // Recria a árvore limpa
+      loadMatches();
+    } catch (error) {
+      alert("Erro ao reiniciar chaveamento.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const handleShare = () => {
+    alert("Funcionalidade de compartilhamento em breve!");
   };
 
   if (loading) {
@@ -90,12 +149,29 @@ export default function SimuladorPage() {
 
   const groupMatches = matches.filter(m => m.stage === 'GROUP');
   const knockoutMatches = matches.filter(m => m.stage !== 'GROUP');
-  
-  // Condição: todos os 72 jogos do grupo estão jogados?
-  const allGroupsFinished = groupMatches.length > 0 && groupMatches.every(m => m.played);
 
   return (
     <div className="pb-10 pt-10">
+      
+      {/* Toast / Modal de Alerta */}
+      {missingGames !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-fifa-red/50 p-8 rounded-2xl max-w-md w-full shadow-[0_0_30px_rgba(255,0,77,0.2)] text-center">
+            <span className="text-6xl mb-4 block drop-shadow-lg">⚠️</span>
+            <h2 className="text-2xl font-black text-fifa-red mb-4 uppercase tracking-widest">Atenção</h2>
+            <p className="text-slate-300 font-medium mb-8">
+              Faltam <strong className="text-white text-xl mx-1">{missingGames}</strong> jogos para encerrar a fase de grupos. Preencha todos os placares antes de avançar para o mata-mata!
+            </p>
+            <button 
+              onClick={() => setMissingGames(null)}
+              className="px-8 py-3 bg-slate-800 hover:bg-fifa-red text-white font-bold rounded-full transition-colors uppercase tracking-wider w-full"
+            >
+              Entendido
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-[0_0_30px_rgba(0,0,0,0.5)] overflow-hidden border border-slate-700/50 p-6 md:p-10 min-h-[50vh] flex flex-col items-center">
         
         <h1 className="text-4xl md:text-5xl font-black text-transparent bg-clip-text bg-gradient-to-r from-fifa-green via-fifa-blue to-fifa-purple mb-8 text-center uppercase tracking-widest drop-shadow-md">
@@ -109,34 +185,40 @@ export default function SimuladorPage() {
                 CHAVEAMENTO OFICIAL 2026
               </span>
             </div>
-            <KnockoutTree matches={knockoutMatches} onScoreChange={handleScoreChange} />
+            <KnockoutTree 
+              matches={knockoutMatches} 
+              onScoreChange={handleScoreChange} 
+              onSimulateAll={handleSimulateKnockout}
+              onClearAll={handleClearKnockout}
+              onShare={handleShare}
+            />
           </div>
         ) : (
-          <div className="flex flex-col items-center text-center mt-10">
-            {!allGroupsFinished ? (
-              <div className="bg-slate-950/80 p-10 rounded-2xl border border-fifa-red/30 max-w-lg shadow-[0_0_20px_rgba(255,0,77,0.1)]">
-                <span className="text-5xl mb-4 block drop-shadow-[0_0_10px_rgba(255,0,77,0.5)]">⚠️</span>
-                <h3 className="text-2xl font-black text-fifa-red mb-3 uppercase tracking-wider">Fase Incompleta</h3>
-                <p className="text-slate-400 font-medium">
-                  Você precisa preencher os resultados de todas as partidas da Fase de Grupos para gerar o cruzamento do Mata-Mata.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-slate-950/80 p-10 rounded-2xl border border-fifa-green/30 max-w-lg flex flex-col items-center shadow-[0_0_20px_rgba(207,249,0,0.1)]">
-                <span className="text-5xl mb-4 block drop-shadow-[0_0_15px_rgba(207,249,0,0.5)]">🏆</span>
-                <h3 className="text-2xl font-black text-fifa-green mb-3 uppercase tracking-wider">Tudo Pronto!</h3>
-                <p className="text-slate-400 mb-8 font-medium">
-                  A fase de grupos foi concluída. Clique no botão abaixo para o supercomputador calcular os classificados e gerar a árvore oficial das eliminatórias.
-                </p>
+          <div className="flex flex-col items-center text-center mt-10 w-full max-w-2xl">
+            <div className="bg-slate-950/80 p-10 rounded-2xl border border-fifa-blue/30 w-full flex flex-col items-center shadow-[0_0_20px_rgba(0,240,255,0.1)]">
+              <span className="text-5xl mb-4 block drop-shadow-[0_0_15px_rgba(0,240,255,0.5)]">🏆</span>
+              <h3 className="text-2xl font-black text-fifa-blue mb-3 uppercase tracking-wider">Supercomputador FIFA</h3>
+              <p className="text-slate-400 mb-8 font-medium">
+                Quando a fase de grupos for concluída, clique no botão abaixo para calcular os classificados e gerar a árvore oficial das eliminatórias.
+              </p>
+              
+              <div className="flex flex-col sm:flex-row gap-4 w-full justify-center">
                 <button
                   onClick={handleGenerate}
                   disabled={generating}
-                  className="px-10 py-5 bg-gradient-to-r from-fifa-purple to-fifa-red hover:from-fifa-blue hover:to-fifa-purple text-white font-black rounded-full text-lg tracking-widest shadow-[0_0_25px_rgba(122,0,255,0.4)] transform hover:-translate-y-1 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed border border-white/10 uppercase"
+                  className="px-8 py-4 bg-gradient-to-r from-fifa-purple to-fifa-blue hover:from-fifa-blue hover:to-fifa-green text-white font-black rounded-full shadow-[0_0_20px_rgba(122,0,255,0.4)] transform hover:-translate-y-1 transition-all duration-300 disabled:opacity-50 uppercase tracking-widest flex-1 max-w-xs"
                 >
-                  {generating ? "Calculando..." : "GERAR CHAVEAMENTO OFICIAL"}
+                  {generating ? "Calculando..." : "Gerar Chaveamento"}
+                </button>
+
+                <button
+                  onClick={handleAutoComplete}
+                  className="px-8 py-4 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-full border border-slate-600 transition-colors uppercase tracking-widest flex-1 max-w-xs text-sm"
+                >
+                  🪄 Auto-Completar (DEV)
                 </button>
               </div>
-            )}
+            </div>
           </div>
         )}
 

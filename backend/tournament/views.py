@@ -71,3 +71,12 @@ class GenerateKnockoutView(APIView):
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+class SimulateKnockoutView(APIView):
+    def post(self, request):
+        try:
+            from .services import simulate_knockout_stage
+            simulate_knockout_stage()
+            return Response({"status": "success"}, status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)

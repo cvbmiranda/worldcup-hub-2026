@@ -129,19 +129,19 @@ def generate_knockout_stage():
     
     # 8 Winners vs 8 Thirds
     for i in range(8):
-        m = Match(team1=winners[i].team, team2=top_8_thirds[7 - i].team, stage=Match.Stage.ROUND_32, date=now)
+        m = Match(team1=winners[i].team, team2=top_8_thirds[7 - i].team, stage=Match.Stage.ROUND_32, match_date_utc=now)
         m.save()
         r32_matches.append(m)
         
     # 4 Winners vs 4 Piores Runners-up
     for i in range(4):
-        m = Match(team1=winners[8 + i].team, team2=runners_up[11 - i].team, stage=Match.Stage.ROUND_32, date=now)
+        m = Match(team1=winners[8 + i].team, team2=runners_up[11 - i].team, stage=Match.Stage.ROUND_32, match_date_utc=now)
         m.save()
         r32_matches.append(m)
         
     # 8 Runners-up vs 8 Runners-up
     for i in range(4):
-        m = Match(team1=runners_up[i].team, team2=runners_up[7 - i].team, stage=Match.Stage.ROUND_32, date=now)
+        m = Match(team1=runners_up[i].team, team2=runners_up[7 - i].team, stage=Match.Stage.ROUND_32, match_date_utc=now)
         m.save()
         r32_matches.append(m)
 
@@ -150,7 +150,7 @@ def generate_knockout_stage():
         next_matches = []
         # Agrupa os jogos anteriores de 2 em 2 para formar 1 novo jogo
         for i in range(0, len(prev_matches), 2):
-            m = Match(stage=stage, date=now)
+            m = Match(stage=stage, match_date_utc=now)
             m.save()
             next_matches.append(m)
             
@@ -167,3 +167,46 @@ def generate_knockout_stage():
     final_match = create_next_round(sf_matches, Match.Stage.FINAL)
 
     return Match.objects.filter(stage=Match.Stage.ROUND_32)
+
+def simulate_knockout_stage():
+    """
+    Preenche resultados aleatórios para todos os jogos do mata-mata, 
+    avançando os vencedores automaticamente até a Grande Final.
+    """
+    stages = [
+        Match.Stage.ROUND_32,
+        Match.Stage.ROUND_16,
+        Match.Stage.QUARTER,
+        Match.Stage.SEMI,
+        Match.Stage.FINAL
+    ]
+    for stage in stages:
+        matches = Match.objects.filter(stage=stage).order_by('id')
+        for match in matches:
+            if not match.team1 or not match.team2:
+                continue
+            match.score1 = random.randint(0, 4)
+            match.score2 = random.randint(0, 4)
+            if match.score1 == match.score2:
+                match.penalties_score1 = random.randint(3, 5)
+                match.penalties_score2 = random.randint(0, 5)
+                while match.penalties_score1 == match.penalties_score2:
+                    match.penalties_score1 = random.randint(3, 5)
+                    match.penalties_score2 = random.randint(0, 5)
+            match.played = True
+            match.save()
+            
+            winner = match.get_winner()
+            if winner and hasattr(match, 'knockout') and match.knockout.next_match:
+                next_match = match.knockout.next_match
+                if next_match.team1 is None:
+                    next_match.team1 = winner
+                elif next_match.team2 is None:
+                    next_match.team2 = winner
+                else:
+                    prev_matches = list(next_match.previous_matches.all().order_by('id'))
+                    if len(prev_matches) > 0 and prev_matches[0].match.id == match.id:
+                        next_match.team1 = winner
+                    elif len(prev_matches) > 1 and prev_matches[1].match.id == match.id:
+                        next_match.team2 = winner
+                next_match.save()

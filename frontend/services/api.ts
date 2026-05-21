@@ -41,3 +41,13 @@ export const generateKnockout = async () => {
     throw error;
   }
 };
+
+export const simulateKnockout = async () => {
+  try {
+    const response = await api.post('simulate-knockout/');
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao simular chaveamento:", error);
+    throw error;
+  }
+};

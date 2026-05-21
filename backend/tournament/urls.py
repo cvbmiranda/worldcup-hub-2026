@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import GroupListView, TeamListView, MatchListView, MatchUpdateView, GenerateKnockoutView
+from .views import GroupListView, TeamListView, MatchListView, MatchUpdateView, GenerateKnockoutView, SimulateKnockoutView
 
 urlpatterns = [
     path('groups/', GroupListView.as_view(), name='group-list'),
@@ -7,4 +7,5 @@ urlpatterns = [
     path('matches/', MatchListView.as_view(), name='match-list'),
     path('matches/<int:pk>/', MatchUpdateView.as_view(), name='match-update'),
     path('generate-knockout/', GenerateKnockoutView.as_view(), name='generate-knockout'),
+    path('simulate-knockout/', SimulateKnockoutView.as_view(), name='simulate-knockout'),
 ]
