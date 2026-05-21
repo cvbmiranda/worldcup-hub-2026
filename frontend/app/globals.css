@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --color-fifa-green: #CFF900;
+  --color-fifa-purple: #7A00FF;
+  --color-fifa-blue: #00F0FF;
+  --color-fifa-red: #FF004D;
+  --color-fifa-orange: #FF5E00;
+}
+
+@layer utilities {
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-fifa-purple);
+    border-radius: 10px;
+    opacity: 0.3;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: var(--color-fifa-blue);
+  }
+}
