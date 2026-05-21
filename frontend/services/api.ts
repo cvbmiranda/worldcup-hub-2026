@@ -1,9 +1,10 @@
 // frontend/services/api.ts
 import axios from 'axios';
 
-// Defina a base_url conforme o seu backend (ajuste a porta se necessário)
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export const api = axios.create({
-  baseURL: 'http://localhost:8000/api/', 
+  baseURL: `${API_URL}/api/`,
 });
 
 export const updateMatchResult = async (
