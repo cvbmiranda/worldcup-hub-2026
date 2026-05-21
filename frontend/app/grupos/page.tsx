@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { api, updateMatchResult } from "../../services/api";
 import MatchCard, { Match } from "../../components/MatchCard";
+import KnockoutTree from "../../components/KnockoutTree";
 
 interface Team {
   id: number;
@@ -21,8 +22,8 @@ export default function GruposPage() {
   const [groups, setGroups] = useState<Group[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [loading, setLoading] = useState(true);
+  const [activeRounds, setActiveRounds] = useState<{ [key: number]: number }>({});
   
-  // Referência para armazenar os timeouts do debounce de cada partida
   const saveTimeouts = useRef<{ [key: number]: NodeJS.Timeout }>({});
 
   useEffect(() => {
@@ -38,7 +39,6 @@ export default function GruposPage() {
       });
   }, []);
 
-  // Função que atualiza a partida quando digitamos um gol e salva na API com debounce
   const handleScoreChange = (matchId: number, team: 'team1' | 'team2', score: number | null) => {
     setMatches(prevMatches => {
       const updatedMatches = prevMatches.map(m =>
@@ -47,7 +47,6 @@ export default function GruposPage() {
       
       const updatedMatch = updatedMatches.find(m => m.id === matchId);
       
-      // Auto-save com debounce de 800ms
       if (updatedMatch) {
         if (saveTimeouts.current[matchId]) {
           clearTimeout(saveTimeouts.current[matchId]);
@@ -62,7 +61,6 @@ export default function GruposPage() {
     });
   };
 
-  // Motor Matemático: Calcula a tabela dinamicamente
   const calculateTable = (groupTeams: Team[], groupMatches: Match[]) => {
     let table = groupTeams.map(team => ({
       ...team,
@@ -98,6 +96,54 @@ export default function GruposPage() {
     }).sort((a, b) => b.pts - a.pts || b.sg - a.sg || b.gp - a.gp);
   };
 
+  const deriveKnockoutMatches = (): Match[] => {
+    if (groups.length === 0) return [];
+
+    let winners: any[] = [];
+    let runnersUp: any[] = [];
+    let thirds: any[] = [];
+
+    groups.forEach(group => {
+      const groupMatches = matches.filter(m => m.group === group.id);
+      const standings = calculateTable(group.teams, groupMatches);
+      
+      if (standings.length >= 1) winners.push({ ...standings[0], group: group.name });
+      if (standings.length >= 2) runnersUp.push({ ...standings[1], group: group.name });
+      if (standings.length >= 3) thirds.push({ ...standings[2], group: group.name });
+    });
+
+    winners.sort((a, b) => b.pts - a.pts || b.sg - a.sg || b.gp - a.gp);
+    runnersUp.sort((a, b) => b.pts - a.pts || b.sg - a.sg || b.gp - a.gp);
+    thirds.sort((a, b) => b.pts - a.pts || b.sg - a.sg || b.gp - a.gp);
+    
+    const top8Thirds = thirds.slice(0, 8);
+    const r32: Match[] = [];
+    let matchIdMock = 1000;
+
+    const createMockMatch = (t1: any, t2: any): Match => ({
+      id: matchIdMock++,
+      team1: { id: t1.id, name: t1.name, flag_url: t1.flag_url, strength: t1.strength },
+      team2: { id: t2.id, name: t2.name, flag_url: t2.flag_url, strength: t2.strength },
+      score1: null,
+      score2: null,
+      group: 0,
+      stage: 'ROUND_32'
+    });
+
+    if (winners.length === 12 && runnersUp.length === 12 && top8Thirds.length === 8) {
+      for (let i = 0; i < 8; i++) {
+        r32.push(createMockMatch(winners[i], top8Thirds[7 - i]));
+      }
+      for (let i = 0; i < 4; i++) {
+        r32.push(createMockMatch(winners[8 + i], runnersUp[11 - i]));
+      }
+      for (let i = 0; i < 4; i++) {
+        r32.push(createMockMatch(runnersUp[i], runnersUp[7 - i]));
+      }
+    }
+    return r32;
+  };
+
   const handleRandomFill = () => {
     const updatedMatches = matches.map(m => {
       if (m.stage === 'GROUP' && m.team1 && m.team2) {
@@ -131,11 +177,21 @@ export default function GruposPage() {
     });
   };
 
+  const changeRound = (groupId: number, dir: number) => {
+    setActiveRounds(prev => {
+      const current = prev[groupId] || 1;
+      const next = Math.max(1, Math.min(3, current + dir));
+      return { ...prev, [groupId]: next };
+    });
+  };
+
   if (loading) return (
     <div className="flex justify-center items-center h-64">
       <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-fifa-green"></div>
     </div>
   );
+
+  const liveKnockoutMatches = deriveKnockoutMatches();
 
   return (
     <div className="pb-10">
@@ -152,23 +208,13 @@ export default function GruposPage() {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 mb-16">
         {groups.map((group) => {
           const groupMatches = matches.filter(m => m.group === group.id).sort((a,b) => a.id - b.id);
           const standings = calculateTable(group.teams, groupMatches);
           
-          // Agrupar as partidas usando o round_number do banco
-          const roundsMap: { [key: number]: Match[] } = {};
-          groupMatches.forEach(m => {
-            const rn = m.round_number || 1;
-            if (!roundsMap[rn]) roundsMap[rn] = [];
-            roundsMap[rn].push(m);
-          });
-          
-          const rounds = Object.keys(roundsMap).sort().map(rNum => ({
-            name: `${rNum}ª Rodada`,
-            games: roundsMap[parseInt(rNum)]
-          }));
+          const currentRound = activeRounds[group.id] || 1;
+          const roundMatches = groupMatches.filter(m => (m.round_number || 1) === currentRound);
 
           return (
             <div key={group.id} className="bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden border border-slate-700/50 flex flex-col lg:flex-row hover:border-fifa-purple/50 hover:shadow-[0_0_20px_rgba(122,0,255,0.15)] transition-all duration-300">
@@ -214,25 +260,38 @@ export default function GruposPage() {
                 </div>
               </div>
 
-              {/* Lista de Jogos por Rodada */}
-              <div className="w-full lg:w-1/2 bg-slate-950/50 p-4">
-                <div className="flex flex-col gap-6 max-h-[500px] lg:max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
-                  {rounds.map((round, rIndex) => (
-                    <div key={rIndex} className="flex flex-col gap-2">
-                      <h4 className="text-fifa-blue font-bold text-xs uppercase tracking-widest border-b border-fifa-blue/30 pb-1 mb-1 text-center">
-                        {round.name}
-                      </h4>
-                      {round.games.map(match => {
-                        return (
-                          <MatchCard 
-                            key={match.id} 
-                            match={match} 
-                            onScoreChange={handleScoreChange} 
-                          />
-                        );
-                      })}
-                    </div>
-                  ))}
+              {/* Lista de Jogos por Rodada com Paginador GE */}
+              <div className="w-full lg:w-1/2 bg-slate-950/50 p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between bg-slate-900/80 rounded-full px-4 py-2 mb-4 border border-slate-700/50">
+                    <button 
+                      onClick={() => changeRound(group.id, -1)}
+                      disabled={currentRound === 1}
+                      className="text-fifa-blue hover:text-white disabled:opacity-30 disabled:hover:text-fifa-blue transition-colors p-2"
+                    >
+                      &#10094;
+                    </button>
+                    <span className="text-fifa-blue font-black text-sm uppercase tracking-widest">
+                      {currentRound}ª Rodada
+                    </span>
+                    <button 
+                      onClick={() => changeRound(group.id, 1)}
+                      disabled={currentRound === 3}
+                      className="text-fifa-blue hover:text-white disabled:opacity-30 disabled:hover:text-fifa-blue transition-colors p-2"
+                    >
+                      &#10095;
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col gap-4">
+                    {roundMatches.map(match => (
+                      <MatchCard 
+                        key={match.id} 
+                        match={match} 
+                        onScoreChange={handleScoreChange} 
+                      />
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -240,6 +299,21 @@ export default function GruposPage() {
           );
         })}
       </div>
+
+      {/* Árvore de Mata-Mata ao Vivo */}
+      {liveKnockoutMatches.length > 0 && (
+        <div className="mt-12 border-t border-slate-700/50 pt-12">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-fifa-blue to-fifa-purple uppercase tracking-widest drop-shadow-md">
+              Mata-Mata em Tempo Real
+            </h2>
+            <p className="text-slate-400 mt-2">
+              Projeção dos 16-avos de final baseada nos placares atuais dos grupos.
+            </p>
+          </div>
+          <KnockoutTree matches={liveKnockoutMatches} onScoreChange={() => {}} />
+        </div>
+      )}
     </div>
   );
 }
