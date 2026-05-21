@@ -23,6 +23,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'rest_framework',
     'tournament.apps.TournamentConfig',
+    'django_extensions'
 ]
 
 # Middlewares (Eles resolvem os erros E408, E409 e E410 do seu print)
