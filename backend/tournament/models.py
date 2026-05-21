@@ -64,7 +64,11 @@ class Match(models.Model):
     penalties_score1 = models.IntegerField(null=True, blank=True)
     penalties_score2 = models.IntegerField(null=True, blank=True)
 
-    date = models.DateTimeField()
+    match_date_utc = models.DateTimeField(null=True, blank=True)
+    official_id = models.IntegerField(null=True, blank=True, unique=True)
+    round_number = models.IntegerField(null=True, blank=True)
+    stadium_name = models.CharField(max_length=200, null=True, blank=True)
+
     stage = models.CharField(max_length=20, choices=Stage.choices)
 
     group = models.ForeignKey(Group, null=True, blank=True, on_delete=models.CASCADE)

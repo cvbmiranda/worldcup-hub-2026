@@ -6,6 +6,8 @@ interface Team {
 
 export interface Match {
   id: number;
+  official_id?: number | null;
+  round_number?: number | null;
   team1: Team;
   team2: Team;
   score1: number | null;
@@ -14,7 +16,9 @@ export interface Match {
   penalties_score2?: number | null;
   group: number;
   stage?: string;
-  date?: string;
+  match_date_utc?: string;
+  stadium_name?: string;
+  played?: boolean;
 }
 
 interface MatchCardProps {

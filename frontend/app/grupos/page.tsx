@@ -157,12 +157,18 @@ export default function GruposPage() {
           const groupMatches = matches.filter(m => m.group === group.id).sort((a,b) => a.id - b.id);
           const standings = calculateTable(group.teams, groupMatches);
           
-          // Agrupar as 6 partidas em 3 rodadas
-          const rounds = [
-            { name: "1ª Rodada", games: groupMatches.slice(0, 2) },
-            { name: "2ª Rodada", games: groupMatches.slice(2, 4) },
-            { name: "3ª Rodada", games: groupMatches.slice(4, 6) }
-          ];
+          // Agrupar as partidas usando o round_number do banco
+          const roundsMap: { [key: number]: Match[] } = {};
+          groupMatches.forEach(m => {
+            const rn = m.round_number || 1;
+            if (!roundsMap[rn]) roundsMap[rn] = [];
+            roundsMap[rn].push(m);
+          });
+          
+          const rounds = Object.keys(roundsMap).sort().map(rNum => ({
+            name: `${rNum}ª Rodada`,
+            games: roundsMap[parseInt(rNum)]
+          }));
 
           return (
             <div key={group.id} className="bg-slate-900/80 backdrop-blur-md rounded-2xl shadow-[0_0_20px_rgba(0,0,0,0.5)] overflow-hidden border border-slate-700/50 flex flex-col lg:flex-row hover:border-fifa-purple/50 hover:shadow-[0_0_20px_rgba(122,0,255,0.15)] transition-all duration-300">
@@ -217,17 +223,16 @@ export default function GruposPage() {
                         {round.name}
                       </h4>
                       {round.games.map(match => {
-                        // Mocking stadium data based on ID for visual flair
-                        const stadiums = ["Estádio Azteca", "MetLife Stadium", "SoFi Stadium", "Hard Rock Stadium"];
-                        const stadium = stadiums[match.id % stadiums.length];
-                        const dateStr = match.date ? new Date(match.date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+                        const stadium = match.stadium_name || "Estádio a definir";
+                        const dateStr = match.match_date_utc ? new Date(match.match_date_utc).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '';
+                        const officialTag = match.official_id ? `Jogo ${match.official_id} • ` : '';
                         
                         return (
                           <MatchCard 
                             key={match.id} 
                             match={match} 
                             onScoreChange={handleScoreChange} 
-                            subtitle={`${dateStr} • ${stadium}`}
+                            subtitle={`${officialTag}${dateStr} • ${stadium}`}
                           />
                         );
                       })}
