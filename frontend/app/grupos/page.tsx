@@ -215,37 +215,35 @@ export default function GruposPage() {
               </div>
 
               {/* Lista de Jogos por Rodada com Paginador GE */}
-              <div className="w-full lg:w-1/2 bg-slate-950/50 p-4 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between bg-slate-900/80 rounded-full px-4 py-2 mb-4 border border-slate-700/50">
-                    <button 
-                      onClick={() => changeRound(group.id, -1)}
-                      disabled={currentRound === 1}
-                      className="text-fifa-blue hover:text-white disabled:opacity-30 disabled:hover:text-fifa-blue transition-colors p-2"
-                    >
-                      &#10094;
-                    </button>
-                    <span className="text-fifa-blue font-black text-sm uppercase tracking-widest">
-                      {currentRound}ª Rodada
-                    </span>
-                    <button 
-                      onClick={() => changeRound(group.id, 1)}
-                      disabled={currentRound === 3}
-                      className="text-fifa-blue hover:text-white disabled:opacity-30 disabled:hover:text-fifa-blue transition-colors p-2"
-                    >
-                      &#10095;
-                    </button>
-                  </div>
+              <div className="w-full flex-1 bg-slate-950/50 p-4 flex flex-col">
+                <div className="flex items-center justify-between bg-slate-900/80 rounded-full px-4 py-2 mb-6 border border-slate-700/50 shrink-0">
+                  <button 
+                    onClick={() => changeRound(group.id, -1)}
+                    disabled={currentRound === 1}
+                    className="text-fifa-blue hover:text-white disabled:opacity-30 disabled:hover:text-fifa-blue transition-colors p-2"
+                  >
+                    &#10094;
+                  </button>
+                  <span className="text-fifa-blue font-black text-sm uppercase tracking-widest">
+                    {currentRound}ª Rodada
+                  </span>
+                  <button 
+                    onClick={() => changeRound(group.id, 1)}
+                    disabled={currentRound === 3}
+                    className="text-fifa-blue hover:text-white disabled:opacity-30 disabled:hover:text-fifa-blue transition-colors p-2"
+                  >
+                    &#10095;
+                  </button>
+                </div>
 
-                  <div className="flex flex-col gap-4 w-full">
-                    {roundMatches.map(match => (
-                      <MatchCard 
-                        key={match.id} 
-                        match={match} 
-                        onScoreChange={handleScoreChange} 
-                      />
-                    ))}
-                  </div>
+                <div className="flex flex-col gap-6 w-full flex-1 justify-center">
+                  {roundMatches.map(match => (
+                    <MatchCard 
+                      key={match.id} 
+                      match={match} 
+                      onScoreChange={handleScoreChange} 
+                    />
+                  ))}
                 </div>
               </div>
 

@@ -56,7 +56,7 @@ export default function MatchCard({ match, onScoreChange }: MatchCardProps) {
         </div>
       )}
 
-      <div className="flex items-center justify-between relative z-10 w-full">
+      <div className="w-full flex justify-between items-center relative z-10">
         {/* Time 1 (Mandante) */}
         <div className="flex flex-1 items-center gap-2 justify-end min-w-0">
           <span className="text-[10px] font-bold text-slate-300 truncate text-right group-hover:text-white transition-colors leading-tight">
@@ -72,7 +72,7 @@ export default function MatchCard({ match, onScoreChange }: MatchCardProps) {
         </div>
 
         {/* Placar Central (Gols e Pênaltis Empilhados) */}
-        <div className="flex flex-col items-center justify-center shrink-0 px-1 min-w-[50px]">
+        <div className="flex-none px-4 flex flex-col items-center justify-center shrink-0 min-w-[50px]">
           {/* Linha 1: Tempo Normal */}
           <div className="flex items-center justify-center gap-1">
             <input
