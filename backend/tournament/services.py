@@ -1,0 +1,101 @@
+from django.db import models
+import random
+from .models import Standing, Group
+from django.db import transaction
+from .models import Group, Standing, Match
+def calculate_group_positions():
+    """
+    Garante que as posições (1º, 2º, 3º, 4º) de cada grupo estejam atualizadas
+    antes de pescarmos os terceiros colocados.
+    """
+    groups = Group.objects.all()
+    
+    for group in groups:
+        # Ordena os times do grupo pelos critérios da FIFA
+        standings = Standing.objects.filter(group=group).order_by(
+            '-points', 
+            '-goal_diff', 
+            '-goals_for'
+        )
+        
+        # Atualiza a coluna 'position' no banco
+        for index, standing in enumerate(standings):
+            standing.position = index + 1
+            standing.save()
+
+def get_best_third_placed_teams():
+    """
+    Filtra os 12 terceiros colocados e retorna os 8 melhores
+    que avançam para os 16-avos de final.
+    """
+    # 1. Primeiro, garantimos que a tabela está 100% atualizada
+    calculate_group_positions()
+    
+    # 2. Pegamos apenas os times na 3ª posição de todos os 12 grupos
+    third_placed_teams = list(Standing.objects.filter(position=3))
+    
+    # 3. Ordenamos essa lista de 12 times em memória (Python) usando os mesmos critérios
+    # Usamos o Python 'sort' em vez do ORM caso precisemos de um desempate randômico complexo
+    third_placed_teams.sort(
+        key=lambda x: (x.points, x.goal_diff, x.goals_for), 
+        reverse=True
+    )
+    
+    # Se houver empate absoluto em todos os critérios no 8º e 9º lugar, 
+    # a FIFA faz sorteio. Para o sistema não quebrar, o sort acima já 
+    # mantém uma ordem determinística, mas você pode refinar isso depois.
+
+    # 4. Retornamos os 8 primeiros da lista (Os classificados!)
+    top_8 = third_placed_teams[:8]
+    eliminated_4 = third_placed_teams[8:]
+    
+    return top_8, eliminated_4
+
+def update_group_standings(group_id):
+    """
+    Recalcula os pontos e gols da tabela de classificação (Standing) 
+    de um grupo específico com base nas partidas jogadas (played=True).
+    """
+    with transaction.atomic():
+        group = Group.objects.get(id=group_id)
+        standings = Standing.objects.filter(group=group)
+
+        # 1. Zerar as estatísticas atuais para recalcular do zero
+        for standing in standings:
+            standing.points = 0
+            standing.goals_for = 0
+            standing.goals_against = 0
+            # O goal_diff é calculado automaticamente pelo seu método save() no model!
+            standing.save()
+
+        # 2. Buscar apenas as partidas já marcadas como jogadas neste grupo
+        matches = Match.objects.filter(group=group, played=True)
+
+        # 3. Recalcular rodando pelas partidas
+        for match in matches:
+            # Prevenção: ignora caso o placar não tenha sido preenchido
+            if match.score1 is None or match.score2 is None:
+                continue 
+
+            st1 = standings.get(team=match.team1)
+            st2 = standings.get(team=match.team2)
+
+            # Atualiza gols feitos e sofridos
+            st1.goals_for += match.score1
+            st1.goals_against += match.score2
+
+            st2.goals_for += match.score2
+            st2.goals_against += match.score1
+
+            # Atualiza os pontos
+            if match.score1 > match.score2:
+                st1.points += 3
+            elif match.score1 < match.score2:
+                st2.points += 3
+            else:
+                st1.points += 1
+                st2.points += 1
+
+            # Salva no banco (isso também aciona o recalculo do goal_diff)
+            st1.save()
+            st2.save()
