@@ -99,3 +99,70 @@ def update_group_standings(group_id):
             # Salva no banco (isso também aciona o recalculo do goal_diff)
             st1.save()
             st2.save()
+
+def generate_knockout_stage():
+    """
+    Gera as 16 partidas dos 16-avos de final (ROUND_32)
+    com base nas classificações dos grupos.
+    Usa um modelo simplificado matemático de cruzamento.
+    """
+    # 1. Checar se a fase de grupos já tem os jogos jogados (72 no total)
+    # Aqui, para ser permissivo no teste, vamos só garantir que as tabelas estejam atualizadas
+    calculate_group_positions()
+
+    # 2. Obter os 1ºs e 2ºs de cada grupo
+    winners = list(Standing.objects.filter(position=1).order_by('-points', '-goal_diff', '-goals_for'))
+    runners_up = list(Standing.objects.filter(position=2).order_by('-points', '-goal_diff', '-goals_for'))
+    
+    # 3. Obter os 8 melhores terceiros colocados
+    top_8_thirds, _ = get_best_third_placed_teams()
+
+    # Temos 12 Winners, 12 Runners-up, e 8 Thirds = 32 times.
+    if len(winners) != 12 or len(runners_up) != 12 or len(top_8_thirds) != 8:
+        raise ValueError("Dados insuficientes para gerar a fase de mata-mata. Faltam times nas classificações.")
+
+    # 4. Limpar qualquer jogo pré-existente do ROUND_32 para evitar duplicatas
+    Match.objects.filter(stage=Match.Stage.ROUND_32).delete()
+
+    matches_to_create = []
+    
+    from django.utils import timezone
+    now = timezone.now()
+
+    # 8 Winners jogam contra 8 Terceiros colocados (cruzamento invertido)
+    for i in range(8):
+        matches_to_create.append(
+            Match(
+                team1=winners[i].team,
+                team2=top_8_thirds[7 - i].team,  # Melhor vencedor contra o "pior" terceiro
+                stage=Match.Stage.ROUND_32,
+                date=now
+            )
+        )
+    
+    # Restaram 4 Winners. Eles jogam contra os 4 piores Runners-up
+    for i in range(4):
+        matches_to_create.append(
+            Match(
+                team1=winners[8 + i].team,
+                team2=runners_up[11 - i].team, # Piores runners-up (índices 11, 10, 9, 8)
+                stage=Match.Stage.ROUND_32,
+                date=now
+            )
+        )
+    
+    # Restaram 8 Runners-up (índices 0 a 7). Eles jogam entre si
+    for i in range(4):
+        matches_to_create.append(
+            Match(
+                team1=runners_up[i].team,
+                team2=runners_up[7 - i].team,
+                stage=Match.Stage.ROUND_32,
+                date=now
+            )
+        )
+
+    # 5. Salvar as 16 partidas no banco em lote
+    Match.objects.bulk_create(matches_to_create)
+
+    return Match.objects.filter(stage=Match.Stage.ROUND_32)

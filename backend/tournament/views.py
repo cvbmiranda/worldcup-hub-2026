@@ -29,3 +29,17 @@ class MatchUpdateView(generics.UpdateAPIView):
             update_group_standings(match.group.id)
             # Reordena as posições (sua função já existente!)
             calculate_group_positions()
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+from .services import generate_knockout_stage
+
+class GenerateKnockoutView(APIView):
+    def post(self, request):
+        try:
+            matches = generate_knockout_stage()
+            serializer = MatchSerializer(matches, many=True)
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
