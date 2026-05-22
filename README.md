@@ -155,6 +155,8 @@ http://localhost:3000
 - [x] Persistência de placares via API REST (POST/PUT)
 - [x] Implementação do chaveamento automático do mata-mata
 - [x] Árvore visual do mata-mata (*Knockout Tree*)
+- [x] Refatoração avançada de UI/UX (Dark Mode de alta densidade e responsividade no mata-mata)
+- [x] Configuração DevOps e infraestrutura para deploy em produção (Render/Vercel)
 - [ ] Sistema de simulação automática da Copa baseado em estatísticas e fator sorte
 
 ---
@@ -166,8 +168,6 @@ http://localhost:3000
 - Ranking de artilheiros
 - Histórico de confrontos
 - Sistema de probabilidades
-- Dark Mode
-- Responsividade mobile completa
 
 ---
 
